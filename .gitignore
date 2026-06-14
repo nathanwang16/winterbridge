@@ -26,3 +26,6 @@ forge*changelog.txt
 
 # Custom ignores
 TODO.md
+.DS_Store
+# Standalone prototype kept as a sibling repo, not part of this tree
+double_click/

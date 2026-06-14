@@ -3,9 +3,12 @@
   "key.categories.winterbridge.inventory": "WinterBridge inventory",
 
   "key.winterbridge.cancel": "Cancel",
-  "key.winterbridge.blocks": "Switch to blocks or spam right click",
+  "key.winterbridge.blocks": "Switch to blocks or auto right click",
   "key.winterbridge.player_names": "Get Player Names",
   "key.winterbridge.ninja": "Ninja bridge",
+  "key.winterbridge.ninja_inc3": "Ninja bridge (increase)",
+  "key.winterbridge.ninja_diag": "Diagonal ninja bridge",
+  "key.winterbridge.ninja_diag_inc": "Diagonal ninja bridge (increase)",
   "key.winterbridge.change_cheat_mode": "Change cheat mode",
   "key.winterbridge.fireball": "Switch to fireball",
   "key.winterbridge.epearl": "Switch to ender pearl",

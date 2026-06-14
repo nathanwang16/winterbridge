@@ -37,6 +37,9 @@ public final class ModKeyBindings {
 		add("blocks", CATEGORY, KeyConflictContext.IN_GAME);
 		add("player_names", CATEGORY, KeyConflictContext.IN_GAME);
 		add("ninja", CATEGORY, GLFW.GLFW_KEY_F6, KeyConflictContext.IN_GAME);
+		add("ninja_inc3", CATEGORY, GLFW.GLFW_KEY_F7, KeyConflictContext.IN_GAME);
+		add("ninja_diag", CATEGORY, GLFW.GLFW_KEY_Y, KeyConflictContext.IN_GAME);
+		add("ninja_diag_inc", CATEGORY, GLFW.GLFW_KEY_U, KeyConflictContext.IN_GAME);
 		add("change_cheat_mode", CATEGORY, GLFW.GLFW_KEY_N, KeyConflictContext.IN_GAME);
 		add("fireball", CATEGORY, GLFW.GLFW_KEY_R, KeyConflictContext.IN_GAME);
 		add("epearl", CATEGORY, KeyConflictContext.IN_GAME);

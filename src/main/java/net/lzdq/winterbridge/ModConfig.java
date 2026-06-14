@@ -22,11 +22,12 @@ public class ModConfig {
 	public static final ForgeConfigSpec.ConfigValue<List<Integer>> ninja_wait_tick;
 	public static final ForgeConfigSpec.ConfigValue<List<Double>> yaw_var, pitch_var;
 	public static final ForgeConfigSpec.ConfigValue<String> auto_login_command;
-	public static final ForgeConfigSpec.IntValue spam_left_min, spam_left_max, timeout_doubleclick;
+	public static final ForgeConfigSpec.IntValue timeout_doubleclick;
+	public static final ForgeConfigSpec.IntValue autoclick_cps_cap, autoclick_base_delay, autoclick_jitter;
 	public static final ForgeConfigSpec.IntValue blockin_rotate_tick, blockin_post_time;
 	public static final ForgeConfigSpec.DoubleValue blockin_offset;
 	public static final ForgeConfigSpec.IntValue delay_sword, delay_double_attack;
-	public static final ForgeConfigSpec.DoubleValue spam_miss_click_prob;
+	public static final ForgeConfigSpec.DoubleValue spam_miss_click_prob, autoclick_skip_prob;
 	public static final ForgeConfigSpec.IntValue ladder_rotate_tick;
 
 	static {
@@ -76,13 +77,21 @@ public class ModConfig {
 
 		BUILDER.push("PVP Settings");
 
-		spam_left_min = BUILDER
-				.comment("Spam left min interval, ms")
-				.defineInRange("spam_left_min", 35, 1, 1000);
+		autoclick_cps_cap = BUILDER
+				.comment("Auto-clicker rolling clicks-per-second cap (clicks in a 1s window). Shared shape for both left attack and right block spam.")
+				.defineInRange("autoclick_cps_cap", 24, 1, 100);
 
-		spam_left_max = BUILDER
-				.comment("Spam left max interval, ms")
-				.defineInRange("spam_left_max", 50, 1, 1000);
+		autoclick_base_delay = BUILDER
+				.comment("Auto-clicker base delay between clicks, ms")
+				.defineInRange("autoclick_base_delay", 25, 1, 1000);
+
+		autoclick_jitter = BUILDER
+				.comment("Auto-clicker random +/- jitter added to each click delay, ms (human-like variance)")
+				.defineInRange("autoclick_jitter", 12, 0, 1000);
+
+		autoclick_skip_prob = BUILDER
+				.comment("Auto-clicker probability of skipping a scheduled click (humanizing), 0..1")
+				.defineInRange("autoclick_skip_prob", 0.10, 0.0, 1.0);
 
 		delay_sword = BUILDER
 				.comment("Delay after switching to sword, before spam-clicking, in ms")

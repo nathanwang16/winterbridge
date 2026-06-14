@@ -11,7 +11,7 @@ This is a bedwars assistant developed by LZDQ. Currently it requires Minecraft 1
 1. Ninja bridge
 2. Ninja bridge with increase
 3. Ninja diagonal bridge (with increase)
-4. Spam-clicking (both left and right)
+4. Auto-clicking (both left and right, CPS-governed and humanized)
 5. Block clutch
 6. Switch tools
 7. Quick switching to (and use) items (fireball, tnt, gapple, and so on)
@@ -49,14 +49,22 @@ Please do not use godbridge cause I can't reproduce it legitmately. My godbridge
 
 --------------
 
-#### spam clicking
+#### auto clicking
 
-For swords, I strongly suggest binding your hotbar switch button of `1` to your mouse side button (Button 4). When holding down your side button, you start spam clicking your left mouse button every random 35~50 ms. So you can instantly switch to your sword and spam-click. To avoid being banned, there is a 50ms delay if you are not holding the sword at the moment. You can't change this behavior.
+Both the left (attack) and right (block) auto-clickers share a humanized timing engine ported from my standalone `double_click.py` tool. Instead of a flat fixed interval, the cadence is shaped by:
 
-For blocks, I slightly suggest binding your hotbar switch button of your block slot to your mouse side button (Button 5). This mod has a key of switching to blocks and start spam right clicking. The logic of spam right clicking is as follows:
+* a **rolling 1-second CPS cap** (`autoclick_cps_cap`, default 24) so the sustained rate stays bounded,
+* **jittered delays** between clicks (`autoclick_base_delay` ± `autoclick_jitter`, default 25 ± 12 ms), and
+* an occasional **skipped click** (`autoclick_skip_prob`, default 0.10) so the rhythm is not mechanically perfect.
+
+There is no separate global toggle hotkey: holding the trigger key *is* the activation gate, exactly like the original tool only injected while you were physically clicking fast.
+
+For swords, I strongly suggest binding your hotbar switch button of `1` to your mouse side button (Button 4). When holding down your side button, you start auto-clicking your left mouse button at the governed CPS above. So you can instantly switch to your sword and auto-click. To avoid being banned, there is a `delay_sword` (default 100ms) delay if you are not holding the sword at the moment, and if you are not pointing at an entity the click still lands only with probability `spam_miss_click_prob` (default 0.9).
+
+For blocks, I slightly suggest binding your hotbar switch button of your block slot to your mouse side button (Button 5). This mod has a key of switching to blocks and start auto right clicking. The logic is as follows:
 
 * When you are not selecting block, switch to the slot with most blocks and do nothing until you release.
-* When you are holding down your block switching button and you are already selecting a block slot, start spam right clicking every client tick (50ms).
+* When you are holding down your block switching button and you are already selecting a block slot, start placing blocks every client tick (50ms), paced through the same CPS governor (block placement is tick-limited, so this mostly adds the jitter/skip humanizing).
 
 ------------
 

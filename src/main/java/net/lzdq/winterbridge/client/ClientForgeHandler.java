@@ -5,6 +5,7 @@ import net.lzdq.winterbridge.ModConfig;
 import static net.lzdq.winterbridge.Utils.*;
 import net.lzdq.winterbridge.WinterBridge;
 import net.lzdq.winterbridge.client.action.ActionHandler;
+import net.lzdq.winterbridge.client.action.AutoClicker;
 import net.lzdq.winterbridge.client.action.DoubleClickHandler;
 import net.lzdq.winterbridge.client.blockin.BlockInHandler;
 import net.lzdq.winterbridge.client.bridge.*;
@@ -56,6 +57,8 @@ public class ClientForgeHandler {
 	static boolean isDoubleAttack = false;
 	static int spam_left_mode = 1; // 0 - do not spam until hit entity (after switch)  1 - spam
 	static int spam_right_mode = 0; // 0 - Not down  1 - Down but not click  2 - Down and click
+	static final AutoClicker leftClicker = new AutoClicker();  // attack (left) auto-click engine
+	static final AutoClicker rightClicker = new AutoClicker(); // place (right) auto-click engine
 	static long until = 0, lastBlockinTime = 0;
 	static AbstractBridgeHandler bridgeHandler;
 	static AbstractClutchHandler clutchHandler;
@@ -74,6 +77,8 @@ public class ClientForgeHandler {
 			PacketInspector.modified = PacketInspector.connected;
 			if (PacketInspector.connected) {
 				spam_right_mode = 0;
+				leftClicker.reset();
+				rightClicker.reset();
 				bridgeHandler = null;
 				clutchHandler = null;
 				CheatMode.changeCheatMode(ModConfig.cheat_mode.get());
@@ -101,11 +106,14 @@ public class ClientForgeHandler {
 			if (ModKeyBindings.INSTANCE.get("ninja").consumeClick())
 				startBridge("ninja");
 
-			// if (ModKeyBindings.INSTANCE.get("ninja_inc3").consumeClick())
-			// 	startBridge("ninja_inc3");
-			//
-			// if (ModKeyBindings.INSTANCE.get("ninja_diag").consumeClick())
-			// 	startBridge("ninja_diag");
+			if (ModKeyBindings.INSTANCE.get("ninja_inc3").consumeClick())
+				startBridge("ninja_inc3");
+
+			if (ModKeyBindings.INSTANCE.get("ninja_diag").consumeClick())
+				startBridge("ninja_diag");
+
+			if (ModKeyBindings.INSTANCE.get("ninja_diag_inc").consumeClick())
+				startBridge("ninja_diag_inc");
 
 			// if (ModKeyBindings.INSTANCE.get("sort").consumeClick()) {
 			// 	is_sorting = true;
@@ -555,7 +563,9 @@ public class ClientForgeHandler {
 	}
 
 	private static void handleSpamClickLeft() {
-		// Spam-click when holding switching to sword
+		// Auto-attack while holding the sword-select key (slot 1). The AutoClicker
+		// governs the cadence (CPS cap + jitter + skip); the guards here decide
+		// whether a scheduled click is actually allowed to land.
 		if (mc.options.keyHotbarSlots[0].isDown()) {
 			if (mc.player.getInventory().selected != 0) {
 				until = System.currentTimeMillis() + ModConfig.delay_sword.get();
@@ -567,22 +577,20 @@ public class ClientForgeHandler {
 					spam_left_mode = 1;
 				else return;
 			}
-			if (mc.hitResult.getType() == Type.ENTITY ||
-					Math.random() < ModConfig.spam_miss_click_prob.get()){
-				// Hit or do hit
-				KeyMapping.click(mc.options.keyAttack.getKey());
-				until = (long) (System.currentTimeMillis() +
-						ModConfig.spam_left_min.get() +
-						Math.random() * (ModConfig.spam_left_max.get() - ModConfig.spam_left_min.get()));
-			} else {
-				// Miss, minimal delay
-				until = System.currentTimeMillis() + ModConfig.spam_left_min.get();
+			if (leftClicker.tryClick(System.currentTimeMillis())) {
+				// On a scheduled beat, swing if pointing at an entity; otherwise still
+				// click most of the time so air-clicking stays human (miss prob).
+				if (mc.hitResult.getType() == Type.ENTITY ||
+						Math.random() < ModConfig.spam_miss_click_prob.get())
+					KeyMapping.click(mc.options.keyAttack.getKey());
 			}
 		} else spam_left_mode = 1;
 	}
 
 	private static void handleSpamClickRight() {
-		// Every client tick
+		// Every client tick: place blocks while the "blocks" key is held, paced by
+		// the AutoClicker. Block placement is tick-limited, so this mainly layers
+		// the jitter/skip humanizing on top of ~tick-rate placement.
 		if (ModKeyBindings.INSTANCE.get("blocks").isDown()) {
 			if (spam_right_mode == 0) {
 				if (isBlock(inv.getSelected()) && inv.getSelected().getCount() > 0) {
@@ -601,10 +609,8 @@ public class ClientForgeHandler {
 					inv.selected = slot;
 				}
 			}
-			if (spam_right_mode == 2) {
-				// KeyMapping.click(mc.options.keyUse.getKey());
+			if (spam_right_mode == 2 && rightClicker.tryClick(System.currentTimeMillis()))
 				ActionHandler.placeBlock();
-			}
 		} else
 			spam_right_mode = 0;
 	}
