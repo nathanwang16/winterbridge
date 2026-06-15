@@ -18,9 +18,9 @@ public abstract class DiagonalBridgeHandler extends AbstractBridgeHandler{
         dir_go_a = Direction.fromYRot(pitch - 135);
         dir_go_d = Direction.fromYRot(pitch + 135);
         //mc.player.connection.sendChat("Directions: A " + dir_go_a.getName() + ", D " + dir_go_d.getName());
-        vec_go = dir_go_a.getNormal().relative(dir_go_d);
-        base_pos = mc.player.getOnPos();
-        if (mc.player.getBlockStateOn().isAir()){
+        vec_go = dir_go_a.getUnitVec3i().relative(dir_go_d);
+        base_pos = onPos();
+        if (onAir()){
             if (!mc.level.getBlockState(base_pos.relative(dir_go_d.getOpposite())).isAir())
                 base_pos = base_pos.relative((dir_go_d.getOpposite()));
             else if (!mc.level.getBlockState(base_pos.relative(dir_go_a.getOpposite())).isAir())
@@ -48,6 +48,8 @@ public abstract class DiagonalBridgeHandler extends AbstractBridgeHandler{
 
     @Override
     void cancelTick(){
+        // Keep sneaking on a manual cancel: standing up mid-bridge would walk us
+        // off the edge and fall. Auto-cancels (hit/fell/reached) release it.
         KeyMapping.set(mc.options.keyShift.getKey(), cancel_cause.equals("manual"));
         KeyMapping.set(mc.options.keyDown.getKey(), false);
         KeyMapping.set(mc.options.keyJump.getKey(), false);

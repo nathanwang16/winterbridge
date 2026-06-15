@@ -37,6 +37,18 @@ public abstract class AbstractBridgeHandler {
         return current_task.equals("finish");
     }
     public void update(String method){ }
+    // 1.21.x's getOnPos()/getBlockStateOn() resolve to the *main supporting block* --
+    // while sneaking at a ledge that's the solid block under your weight, never the
+    // air past the edge, so getBlockStateOn().isAir() is permanently false there. The
+    // bridge logic was written against the older "block under the player's position
+    // centre" semantics (which reads air when you overhang an edge), so reproduce that
+    // directly instead. 0.2 matches Minecraft's legacy getOnPos(0.2F) y-offset.
+    BlockPos onPos(){
+        return BlockPos.containing(mc.player.getX(), mc.player.getY() - 0.2, mc.player.getZ());
+    }
+    boolean onAir(){
+        return mc.level.getBlockState(onPos()).isAir();
+    }
     public void setCancelled(String cause){
         mc.player.displayClientMessage(
                 Component.literal("Cancel bridge. Cause: " + cause)
@@ -84,7 +96,7 @@ public abstract class AbstractBridgeHandler {
         if (base_pos.getY() == last_y) {
             //mc.player.displayClientMessage(Component.literal("2"), false);
             //WinterBridge.LOGGER.info("BlockY {}", mc.player.getBlockY());
-            mc.options.keyJump.setDown(mc.player.getOnPos().getY() == last_y);
+            mc.options.keyJump.setDown(onPos().getY() == last_y);
             if (mc.level.getBlockState(base_pos.above()).isAir()){
                 if (mc.player.getY() >= last_y + 2.0) {
                     ActionHandler.placeBlock();

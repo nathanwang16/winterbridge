@@ -16,21 +16,21 @@ public abstract class OrthogonalBridgeHandler extends AbstractBridgeHandler{
         float pitch = mc.player.getYRot();
         pitch += 135;
         dir_go = Direction.fromYRot(pitch);
-        base_pos = mc.player.getOnPos();
-        if (mc.player.getBlockStateOn().isAir())
+        base_pos = onPos();
+        if (onAir())
             base_pos = base_pos.relative(dir_go.getOpposite());
         //RotateHandler.init(new Vec2(ModConfig.ninja_yaw.get().floatValue(), dir_go.toYRot() - 135), 10);
         //WinterBridge.LOGGER.info("Starting bridge. Pitch: {} Direction: {}", pitch, dir_go.getName());
     }
     double getDistS(){
         Direction dir_s = dir_go.getClockWise();
-        Vec3i vec_s = dir_s.getNormal();
+        Vec3i vec_s = dir_s.getUnitVec3i();
         Vec3 center = base_pos.getCenter();
         return mc.player.position().subtract(center).dot(Vec3.atLowerCornerOf(vec_s));
     }
     double getDistWalk(){
         Vec3 center = base_pos.getCenter();
-        return mc.player.position().subtract(center).dot(Vec3.atLowerCornerOf(dir_go.getNormal()));
+        return mc.player.position().subtract(center).dot(Vec3.atLowerCornerOf(dir_go.getUnitVec3i()));
     }
     void updateNextWalk(){
         left_tick = CheatMode.getNinjaWaitTick();
@@ -44,6 +44,8 @@ public abstract class OrthogonalBridgeHandler extends AbstractBridgeHandler{
 
     @Override
     void cancelTick(){
+        // Keep sneaking on a manual cancel: standing up mid-bridge would walk us
+        // off the edge and fall. Auto-cancels (hit/fell/reached) release it.
         KeyMapping.set(mc.options.keyShift.getKey(), cancel_cause.equals("manual"));
         KeyMapping.set(mc.options.keyDown.getKey(), false);
         KeyMapping.set(mc.options.keyRight.getKey(), false);

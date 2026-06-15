@@ -37,9 +37,9 @@ public class BlockClutchHandler extends AbstractClutchHandler{
 			BlockPos base = pos.relative(d);
 			if (!mc.level.getBlockState(base).isAir()){
 				Vec3 loc = Vec3.atCenterOf(base);
-				loc = loc.add(Vec3.atLowerCornerOf(d.getOpposite().getNormal()).scale(0.5));
+				loc = loc.add(Vec3.atLowerCornerOf(d.getOpposite().getUnitVec3i()).scale(0.5));
 				if (d.getStepY() == 0){
-					loc = loc.add(Vec3.atLowerCornerOf(d.getClockWise().getNormal())
+					loc = loc.add(Vec3.atLowerCornerOf(d.getClockWise().getUnitVec3i())
 							.scale(Math.random() * 0.5 - 0.25));
 					loc = loc.add(0, Math.random() * 0.5 - 0.25, 0);
 				}

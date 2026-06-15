@@ -1,6 +1,6 @@
 {
-  "key.categories.winterbridge": "WinterBridge",
-  "key.categories.winterbridge.inventory": "WinterBridge inventory",
+  "key.category.winterbridge.main": "WinterBridge",
+  "key.category.winterbridge.inventory": "WinterBridge inventory",
 
   "key.winterbridge.cancel": "Cancel",
   "key.winterbridge.blocks": "Switch to blocks or auto right click",

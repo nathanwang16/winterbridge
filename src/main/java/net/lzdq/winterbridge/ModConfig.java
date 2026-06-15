@@ -1,34 +1,28 @@
 package net.lzdq.winterbridge;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
-import com.electronwill.nightconfig.core.io.WritingMode;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
 
-@Mod.EventBusSubscriber(modid="winterbridge", bus=Mod.EventBusSubscriber.Bus.MOD, value=Dist.CLIENT)
 public class ModConfig {
-	private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-	public static final ForgeConfigSpec CONFIG;
-	public static final ForgeConfigSpec.IntValue cheat_mode;
-	public static final ForgeConfigSpec.DoubleValue ninja_side_dist, ninja_pitch, ninja_walk_dist;
-	public static final ForgeConfigSpec.DoubleValue ninja_diag_pitch, ninja_diag_walk_dist;
-	public static final ForgeConfigSpec.DoubleValue god_pitch, god_walk_dist;
-	public static final ForgeConfigSpec.ConfigValue<List<Integer>> ninja_wait_tick;
-	public static final ForgeConfigSpec.ConfigValue<List<Double>> yaw_var, pitch_var;
-	public static final ForgeConfigSpec.ConfigValue<String> auto_login_command;
-	public static final ForgeConfigSpec.IntValue timeout_doubleclick;
-	public static final ForgeConfigSpec.IntValue autoclick_cps_cap, autoclick_base_delay, autoclick_jitter;
-	public static final ForgeConfigSpec.IntValue blockin_rotate_tick, blockin_post_time;
-	public static final ForgeConfigSpec.DoubleValue blockin_offset;
-	public static final ForgeConfigSpec.IntValue delay_sword, delay_double_attack;
-	public static final ForgeConfigSpec.DoubleValue spam_miss_click_prob, autoclick_skip_prob;
-	public static final ForgeConfigSpec.IntValue ladder_rotate_tick;
+	private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+	public static final ModConfigSpec CONFIG;
+	public static final ModConfigSpec.IntValue cheat_mode;
+	public static final ModConfigSpec.DoubleValue ninja_side_dist, ninja_pitch, ninja_walk_dist;
+	public static final ModConfigSpec.DoubleValue ninja_diag_pitch, ninja_diag_walk_dist;
+	public static final ModConfigSpec.DoubleValue god_pitch, god_walk_dist;
+	public static final ModConfigSpec.ConfigValue<List<Integer>> ninja_wait_tick;
+	public static final ModConfigSpec.ConfigValue<List<Double>> yaw_var, pitch_var;
+	public static final ModConfigSpec.ConfigValue<String> auto_login_command;
+	public static final ModConfigSpec.IntValue timeout_doubleclick;
+	public static final ModConfigSpec.IntValue autoclick_cps_cap, autoclick_base_delay, autoclick_jitter;
+	public static final ModConfigSpec.IntValue blockin_rotate_tick, blockin_post_time;
+	public static final ModConfigSpec.DoubleValue blockin_offset;
+	public static final ModConfigSpec.IntValue delay_sword, delay_double_attack;
+	public static final ModConfigSpec.DoubleValue spam_miss_click_prob, autoclick_skip_prob;
+	public static final ModConfigSpec.IntValue ladder_rotate_tick;
 
 	static {
 		BUILDER.push("Bridge Settings");
@@ -141,25 +135,4 @@ public class ModConfig {
 
 		CONFIG = BUILDER.build();
 	}
-
-	public static void loadConfig(ForgeConfigSpec config, Path path) {
-		final CommentedFileConfig fileConfig = CommentedFileConfig.builder(path)
-				.sync()
-				.autosave()
-				.writingMode(WritingMode.REPLACE)
-				.build();
-
-		fileConfig.load();
-		config.setConfig(fileConfig);
-	}
-
-	// @SubscribeEvent
-	// public static void onLoad(final FMLLoadCompleteEvent event) {
-	// 	loadConfig(CONFIG, FMLPaths.CONFIGDIR.get().resolve("winterbridge-config.toml"));
-	// }
-
-	// @SubscribeEvent
-	// public static void onCommonSetup(final FMLCommonSetupEvent event) {
-	// 	FMLJavaModLoadingContext.get().getModEventBus().register(ModConfig.class);
-	// }
 }

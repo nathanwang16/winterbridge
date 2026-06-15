@@ -38,14 +38,14 @@ public class GodBridgeHandler extends OrthogonalBridgeHandler{
 	@Override
 	void walkTick(){
 		if (getDistWalk() >= ModConfig.god_walk_dist.get()){
-			if (mc.player.getBlockStateOn().isAir()){
+			if (onAir()){
 				//KeyMapping.click(mc.options.keyUse.getKey());
 				//mc.player.setPos(mc.player.getX(), Mth.ceil(mc.player.getY()), mc.player.getZ());
 				if (mc.hitResult.getType() == HitResult.Type.BLOCK){
 					BlockHitResult hit = (BlockHitResult) mc.hitResult;
 					if (hit.getDirection() == Direction.UP){
 						// modify the packet
-						Vec3 loc = base_pos.getCenter().add(Vec3.atCenterOf(dir_go.getNormal()).scale(0.5));
+						Vec3 loc = base_pos.getCenter().add(Vec3.atCenterOf(dir_go.getUnitVec3i()).scale(0.5));
 						loc = loc.add(0, 0.499, 0);
 						hit = new BlockHitResult(loc, dir_go, base_pos, false);
 					}

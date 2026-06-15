@@ -74,7 +74,7 @@ public class BlockInHandler {
 			finished = true;
 			return ;
 		}
-		if (!isBlock(mc.player.getInventory().getSelected())){
+		if (!isBlock(mc.player.getInventory().getSelectedItem())){
 			mc.player.displayClientMessage(
 					Component.literal("Block-in failed: NOT HOLDING BLOCKS")
 							.withStyle(Style.EMPTY.withColor(0xFF0000)),

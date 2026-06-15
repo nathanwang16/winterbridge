@@ -1,6 +1,5 @@
 package net.lzdq.winterbridge.client;
 
-import io.netty.channel.ChannelPipeline;
 import net.lzdq.winterbridge.ModConfig;
 import static net.lzdq.winterbridge.Utils.*;
 import net.lzdq.winterbridge.WinterBridge;
@@ -13,12 +12,12 @@ import net.lzdq.winterbridge.client.clutch.AbstractClutchHandler;
 import net.lzdq.winterbridge.client.clutch.BlockClutchHandler;
 import net.lzdq.winterbridge.client.screen.ContainerScreenWithMoney;
 import net.lzdq.winterbridge.client.action.RotateHandler;
-import net.lzdq.winterbridge.packet.PacketInspector;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -30,31 +29,34 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.HitResult.Type;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
 
-@Mod.EventBusSubscriber(modid = WinterBridge.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+@EventBusSubscriber(modid = WinterBridge.MODID, value = Dist.CLIENT)
 public class ClientForgeHandler {
 	static Minecraft mc;
 	static Inventory inv;
 	static boolean cancelled = false;
 	static boolean inventoryOpen = false, chestOpen = false;
 	static boolean isDoubleAttack = false;
+	// Connection-state tracking (formerly piggybacked on the now-removed PacketInspector).
+	static boolean connected = false, wasConnected = false;
 	static int spam_left_mode = 1; // 0 - do not spam until hit entity (after switch)  1 - spam
 	static int spam_right_mode = 0; // 0 - Not down  1 - Down but not click  2 - Down and click
 	static final AutoClicker leftClicker = new AutoClicker();  // attack (left) auto-click engine
@@ -68,41 +70,29 @@ public class ClientForgeHandler {
 	static boolean last_inc = false; // avoid sending duplicate messages
 
 	@SubscribeEvent
-	public static void onClientTick(TickEvent.ClientTickEvent event) {
-		if (event.phase == TickEvent.Phase.END)
-			return;
+	public static void onClientTick(ClientTickEvent.Pre event) {
 		mc = Minecraft.getInstance();
-		PacketInspector.connected = (mc.player != null);
-		if (PacketInspector.connected != PacketInspector.modified) {
-			PacketInspector.modified = PacketInspector.connected;
-			if (PacketInspector.connected) {
+		connected = (mc.player != null);
+		if (connected != wasConnected) {
+			wasConnected = connected;
+			if (connected) {
 				spam_right_mode = 0;
 				leftClicker.reset();
 				rightClicker.reset();
 				bridgeHandler = null;
 				clutchHandler = null;
 				CheatMode.changeCheatMode(ModConfig.cheat_mode.get());
-				ChannelPipeline pipeline = mc.getConnection().getConnection().channel().pipeline();
-				pipeline.addBefore("packet_handler", "my_packet_handler", new PacketInspector());
-				WinterBridge.LOGGER.debug(pipeline.names().toString());
 			}
 		}
 
-		if (!PacketInspector.connected)
+		if (!connected)
 			return;
 
 		inv = mc.player.getInventory();
 		inventoryOpen = (mc.screen instanceof InventoryScreen);
 		chestOpen = (mc.screen instanceof ContainerScreen);
 
-		if (!inventoryOpen && !chestOpen) { // DONE: add logic to determine whether inventory or chest is open
-			// if (mc.player.containerMenu != null)
-			// WinterBridge.LOGGER.debug("containerMenu ID = {}",
-			// mc.player.containerMenu.containerId);
-			// if (mc.player.containerMenu instanceof InventoryMenu)
-			// WinterBridge.LOGGER.debug("Inventory open 1");
-			// if (mc.player.inventoryMenu != null)
-			// WinterBridge.LOGGER.debug("Inventory open 2");
+		if (!inventoryOpen && !chestOpen) {
 			if (ModKeyBindings.INSTANCE.get("ninja").consumeClick())
 				startBridge("ninja");
 
@@ -114,11 +104,6 @@ public class ClientForgeHandler {
 
 			if (ModKeyBindings.INSTANCE.get("ninja_diag_inc").consumeClick())
 				startBridge("ninja_diag_inc");
-
-			// if (ModKeyBindings.INSTANCE.get("sort").consumeClick()) {
-			// 	is_sorting = true;
-			// 	cancelled = false;
-			// }
 
 			handleSpamClickRight();
 
@@ -195,7 +180,7 @@ public class ClientForgeHandler {
 				// If NOT onGround and has block 5 below, do a double-click
 				// otherwise (no block underneath), do a block clutch
 				boolean isDoubleClick = false;
-				if (!mc.player.isOnGround()) {
+				if (!mc.player.onGround()) {
 					BlockPos pos = mc.player.getOnPos();
 					for(int i=0; !isDoubleClick && i<5; i++){
 						if (!mc.level.getBlockState(pos).isAir())
@@ -214,8 +199,8 @@ public class ClientForgeHandler {
 
 			if (CheatMode.cheat_mode < 2 &&
 					mc.hitResult != null && mc.hitResult.getType() == Type.ENTITY &&
-					(mc.player.getInventory().selected == 0 ||
-					 mc.player.getInventory().getSelected().is(Items.STICK)) &&
+					(mc.player.getInventory().getSelectedSlot() == 0 ||
+					 mc.player.getInventory().getSelectedItem().is(Items.STICK)) &&
 					mc.options.keyUse.consumeClick()){
 				// Holding sword or stick, pointing to an entity and right click (consume)
 				// Do a double click = click once and click later in another frame
@@ -226,12 +211,12 @@ public class ClientForgeHandler {
 
 			if (CheatMode.cheat_mode < 2 && mc.options.keyJump.isDown() && mc.player.fallDistance > 4)
 				blockLadderClutch();
-			
+
 		} else {
 			// Handle the sharing keys
 			if (ModKeyBindings.INSTANCE.get("store_money").consumeClick())
 				storeMoney();
-			
+
 			if (ModKeyBindings.INSTANCE.get("get_money").consumeClick())
 				getMoney();
 
@@ -243,13 +228,10 @@ public class ClientForgeHandler {
 
 			// Handle the chest keys
 			if (chestOpen) {
-				// WinterBridge.LOGGER.debug("chestOpen");
 				if (mc.player.containerMenu == null) {
 					WinterBridge.LOGGER.error("chestOpen, containerMenu is null");
 				} else if (mc.player.containerMenu.containerId == 0) {
 					WinterBridge.LOGGER.error("chestOpen, containerMenu is 0");
-				} else {
-					// WinterBridge.LOGGER.debug("chest ok");
 				}
 			}
 			// Handle the inventory keys
@@ -270,14 +252,6 @@ public class ClientForgeHandler {
 		if (System.currentTimeMillis() < until)
 			return;
 		handleSpamClickLeft(); // To check whether is switching
-
-		if (bridgeHandler != null) {
-			bridgeHandler.tick();
-			if (cancelled)
-				bridgeHandler.setCancelled("manual");
-			if (bridgeHandler.isFinished())
-				bridgeHandler = null;
-		}
 
 		if (clutchHandler != null) {
 			if (clutchHandler.isFinished())
@@ -300,14 +274,39 @@ public class ClientForgeHandler {
 				doubleClickHandler = null;
 			else doubleClickHandler.tick();
 		}
-		
+	}
+
+	@SubscribeEvent
+	public static void onClientTickControl(ClientTickEvent.Post event) {
+		// The bridge state machine runs in the *Post* phase, restoring the original
+		// mod's TickEvent.Phase.END timing. By Post, Minecraft has re-run
+		// gameRenderer.pick() (fresh mc.hitResult) and ticked the player (this tick's
+		// movement applied), so the bridge reads post-movement position and an
+		// up-to-date look target instead of the stale, pre-movement state it saw when
+		// the first port drove it from Pre. Keybind/click detection (incl. the
+		// bridge keys) stays in Pre above. RotateHandler.tick() moves here too so it
+		// still advances right after bridgeHandler.tick(), as it did originally.
+		mc = Minecraft.getInstance();
+		if (mc.player == null)
+			return;
+		if (System.currentTimeMillis() < until)
+			return;
+
+		if (bridgeHandler != null) {
+			bridgeHandler.tick();
+			if (cancelled)
+				bridgeHandler.setCancelled("manual");
+			if (bridgeHandler.isFinished())
+				bridgeHandler = null;
+		}
+
 		RotateHandler.tick();
 	}
 
 	private static boolean switchToItem(Item item) {
 		for (int i = 0; i < 9; i++)
 			if (inv.getItem(i).is(item)) {
-				inv.selected = i;
+				inv.setSelectedSlot(i);
 				return true;
 			}
 		return false;
@@ -320,28 +319,31 @@ public class ClientForgeHandler {
 		for (int i = 0; i < 9; i++) {
 			ItemStack stack = inv.getItem(i);
 			tp.add("");
-			if (stack.getItem() instanceof PotionItem) {
+			PotionContents contents = stack.get(DataComponents.POTION_CONTENTS);
+			// Guard on PotionItem so tipped arrows (which also carry POTION_CONTENTS)
+			// are not misclassified as drinkable potions.
+			if (stack.getItem() instanceof PotionItem && contents != null) {
 				WinterBridge.LOGGER.debug("potion at {} slot", i);
-				for (MobEffectInstance effect : PotionUtils.getMobEffects(stack)) {
-					if (effect.getEffect() == MobEffects.JUMP)
+				for (MobEffectInstance effect : contents.getAllEffects()) {
+					if (effect.getEffect().is(MobEffects.JUMP_BOOST))
 						tp.set(i, "jump");
-					else if (effect.getEffect() == MobEffects.INVISIBILITY)
+					else if (effect.getEffect().is(MobEffects.INVISIBILITY))
 						tp.set(i, "invis");
-					else if (effect.getEffect() == MobEffects.MOVEMENT_SPEED)
+					else if (effect.getEffect().is(MobEffects.SPEED))
 						tp.set(i, "speed");
 				}
 			} else if (stack.is(Items.MILK_BUCKET)) {
 				tp.set(i, "milk");
 			}
 		}
-		WinterBridge.LOGGER.debug("type in hand: {}", tp.get(inv.selected));
+		WinterBridge.LOGGER.debug("type in hand: {}", tp.get(inv.getSelectedSlot()));
 		for (int i = 1; i <= potions.size(); i++) {
 			// i is the offset, j is the real one switching to
 			// When not holding a potion, indexOf starts at -1
-			int j = (i + potions.indexOf(tp.get(inv.selected))) % potions.size();
+			int j = (i + potions.indexOf(tp.get(inv.getSelectedSlot()))) % potions.size();
 			int k = tp.indexOf(potions.get(j));
 			if (k != -1) {
-				inv.selected = k;
+				inv.setSelectedSlot(k);
 				return;
 			}
 		}
@@ -349,7 +351,7 @@ public class ClientForgeHandler {
 
 	private static void normalDropMoney() {
 		// Drop money (from emerald to iron). Inventory not open
-		int t = moneyItems.indexOf(inv.getSelected().getItem());
+		int t = moneyItems.indexOf(inv.getSelectedItem().getItem());
 		if (t != -1) {
 			// Drop all money in the current slot
 			mc.player.drop(true);
@@ -358,7 +360,7 @@ public class ClientForgeHandler {
 		for (Item money : moneyItems)
 			for (int i = 0; i < 9; i++)
 				if (inv.getItem(i).is(money)) {
-					inv.selected = i;
+					inv.setSelectedSlot(i);
 					return;
 				}
 	}
@@ -385,11 +387,10 @@ public class ClientForgeHandler {
 		List<ItemStack> items = menu.getItems();
 		for (Item money : moneyItems)
 			// The last slots are player's inventory
-			for (int i = items.size() - (inventoryOpen ? 9 : inv.items.size()); i < items.size(); i++)
+			for (int i = items.size() - (inventoryOpen ? 9 : inv.getNonEquipmentItems().size()); i < items.size(); i++)
 				if (items.get(i).is(money)) {
 					WinterBridge.LOGGER.debug("Found money at {}, containerId={}", i,
 							menu.containerId);
-					// mc.player.containerMenu.quickMoveStack(mc.player, i);
 					mc.gameMode.handleInventoryMouseClick(
 							menu.containerId,
 							i,
@@ -406,11 +407,10 @@ public class ClientForgeHandler {
 		List<ItemStack> items = menu.getItems();
 		for (Item money : moneyItems)
 			// The last slots are player's inventory
-			for (int i = 0; i < items.size() - (inventoryOpen ? 9 : inv.items.size()); i++)
+			for (int i = 0; i < items.size() - (inventoryOpen ? 9 : inv.getNonEquipmentItems().size()); i++)
 				if (items.get(i).is(money)) {
 					WinterBridge.LOGGER.debug("Found money at {}, containerId={}", i,
 							mc.player.containerMenu.containerId);
-					// mc.player.containerMenu.quickMoveStack(mc.player, i);
 					mc.gameMode.handleInventoryMouseClick(
 							menu.containerId,
 							i,
@@ -431,10 +431,10 @@ public class ClientForgeHandler {
 		};
 		for (int i = 0; i < 9; i++) {
 			for (String s : blocks) {
-				if (inv.getSelected().getDisplayName().getString().contains(s))
+				if (inv.getSelectedItem().getDisplayName().getString().contains(s))
 					break;
 				if (inv.getItem(i).getDisplayName().getString().contains(s)) {
-					inv.selected = i;
+					inv.setSelectedSlot(i);
 					break;
 				}
 			}
@@ -442,14 +442,17 @@ public class ClientForgeHandler {
 	}
 
 	@SubscribeEvent
-	public static void onRenderTick(TickEvent.RenderTickEvent event) {
-		if (event.phase == TickEvent.Phase.END)
+	public static void onRenderTick(RenderFrameEvent.Pre event) {
+		// RenderFrameEvent.Pre can fire before the first client tick has set `mc`
+		// (e.g. during title-screen / disconnect rendering), so initialise it here
+		// and bail when not in a world.
+		mc = Minecraft.getInstance();
+		if (mc.player == null)
 			return;
 		if (System.currentTimeMillis() < until)
 			return;
 		handleSpamClickLeft();
 		if (isDoubleAttack){
-			// mc.player.displayClientMessage(Component.literal("double attack"), true);
 			KeyMapping.click(mc.options.keyAttack.getKey());
 			isDoubleAttack = false;
 		}
@@ -472,7 +475,6 @@ public class ClientForgeHandler {
 				return;
 			slot_from = slot.getSlotIndex();
 			if (slot.container == inv) {
-				// WinterBridge.LOGGER.debug("fuck");
 				if (slot_from < 9)
 					slot_from += 36;
 				slot_from += 18;
@@ -506,7 +508,7 @@ public class ClientForgeHandler {
 			}
 		} else if (isBlock(mc.player.getMainHandItem())) {
 			// Check there is no jump boost
-			if (mc.player.hasEffect(MobEffects.JUMP))
+			if (mc.player.hasEffect(MobEffects.JUMP_BOOST))
 				return;
 			// Place a block first, then switch to ladder (if has)
 			if (ActionHandler.placeBlock()){
@@ -521,14 +523,14 @@ public class ClientForgeHandler {
 			}
 		}
 	}
-	
+
 	private static void autoSwitchTool() {
 		int slot = inv.getFreeSlot(); // empty slot or sword
 		if (slot == -1 || !Inventory.isHotbarSlot(slot))
 			slot = 0;
 		if (mc.hitResult.getType() != HitResult.Type.BLOCK) {
-			if (isBlock(inv.getSelected()))
-				inv.selected = slot;
+			if (isBlock(inv.getSelectedItem()))
+				inv.setSelectedSlot(slot);
 			return;
 		}
 		BlockHitResult hit = (BlockHitResult) mc.hitResult;
@@ -536,7 +538,7 @@ public class ClientForgeHandler {
 		for (int i = 0; i < 9; i++)
 			if (inv.getItem(i).getDestroySpeed(blockState) > inv.getItem(slot).getDestroySpeed(blockState))
 				slot = i;
-		inv.selected = slot;
+		inv.setSelectedSlot(slot);
 	}
 
 	private static void autoE() {
@@ -546,7 +548,8 @@ public class ClientForgeHandler {
 		 * If pointing to block, switch to tool; otherwise switch to KB-stick.
 		 */
 		int slot_kb = -1;
-		for (int i = 0; i < inv.items.size(); i++)
+		// Only a hotbar stick can be held, so only search the hotbar (1.21 setSelectedSlot rejects non-hotbar slots).
+		for (int i = 0; i < 9; i++)
 			if (inv.getItem(i).is(Items.STICK)) {
 				slot_kb = i;
 				break;
@@ -557,7 +560,7 @@ public class ClientForgeHandler {
 			if (mc.hitResult.getType() == HitResult.Type.BLOCK) {
 				autoSwitchTool();
 			} else {
-				inv.selected = slot_kb;
+				inv.setSelectedSlot(slot_kb);
 			}
 		}
 	}
@@ -567,7 +570,7 @@ public class ClientForgeHandler {
 		// governs the cadence (CPS cap + jitter + skip); the guards here decide
 		// whether a scheduled click is actually allowed to land.
 		if (mc.options.keyHotbarSlots[0].isDown()) {
-			if (mc.player.getInventory().selected != 0) {
+			if (mc.player.getInventory().getSelectedSlot() != 0) {
 				until = System.currentTimeMillis() + ModConfig.delay_sword.get();
 				spam_left_mode = 0; // do not spam until hit entity or next hold
 				return;
@@ -593,20 +596,20 @@ public class ClientForgeHandler {
 		// the jitter/skip humanizing on top of ~tick-rate placement.
 		if (ModKeyBindings.INSTANCE.get("blocks").isDown()) {
 			if (spam_right_mode == 0) {
-				if (isBlock(inv.getSelected()) && inv.getSelected().getCount() > 0) {
+				if (isBlock(inv.getSelectedItem()) && inv.getSelectedItem().getCount() > 0) {
 					// Already holding block. Start spam-click
 					spam_right_mode = 2;
 				} else {
 					// Not holding, switch to block
 					spam_right_mode = 1;
-					int slot = inv.selected, mxcnt = 0;
+					int slot = inv.getSelectedSlot(), mxcnt = 0;
 					for (int i = 0; i < 9; i++)
 						if (isBlock(inv.getItem(i)) &&
 								inv.getItem(i).getCount() > mxcnt) {
 							slot = i;
 							mxcnt = inv.getItem(i).getCount();
 						}
-					inv.selected = slot;
+					inv.setSelectedSlot(slot);
 				}
 			}
 			if (spam_right_mode == 2 && rightClicker.tryClick(System.currentTimeMillis()))
@@ -634,14 +637,11 @@ public class ClientForgeHandler {
 	}
 
 	@SubscribeEvent
-	public static void onLivingHurt(LivingHurtEvent event) {
-		// BridgeMod.LOGGER.debug(event.getEntity().getName().getString() + " has been
-		// hurt!");
+	public static void onLivingHurt(LivingIncomingDamageEvent event) {
 		if (event.getEntity() instanceof Player) {
 			Player player = (Player) event.getEntity();
 			if (player == mc.player) {
-				// Hit
-				// AutoCancel
+				// Hit -> AutoCancel
 				if (bridgeHandler != null)
 					bridgeHandler.setCancelled("hit");
 				if (blockinHandler != null)
@@ -652,15 +652,12 @@ public class ClientForgeHandler {
 
 	@SubscribeEvent
 	public static void onScreenOpen(ScreenEvent.Opening event) {
-		// WinterBridge.LOGGER.debug("ScreenEvent. {}", event);
 		KeyMapping.releaseAll(); // Release conflicting keys
 		if (event.getScreen() instanceof InventoryScreen) {
 			WinterBridge.LOGGER.debug("Opened inventory");
-			// inventoryOpen = true;
 		}
 		if (event.getScreen() instanceof ContainerScreen) {
 			WinterBridge.LOGGER.debug("Opened a container");
-			// chestOpen = true;
 			ContainerScreen chest = (ContainerScreen) event.getScreen();
 			event.setNewScreen(new ContainerScreenWithMoney(
 					chest.getMenu(),
@@ -671,15 +668,12 @@ public class ClientForgeHandler {
 
 	@SubscribeEvent
 	public static void onScreenClose(ScreenEvent.Closing event) {
-		// WinterBridge.LOGGER.debug("ScreenEvent. {}", event);
 		KeyMapping.releaseAll(); // Release conflicting keys
 		if (event.getScreen() instanceof InventoryScreen) {
 			WinterBridge.LOGGER.debug("Closed inventory");
-			// inventoryOpen = false;
 		}
 		if (event.getScreen() instanceof ContainerScreen) {
 			WinterBridge.LOGGER.debug("Closed a container");
-			// chestOpen = false;
 		}
 	}
 

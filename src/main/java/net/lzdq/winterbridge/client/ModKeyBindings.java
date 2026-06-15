@@ -3,18 +3,24 @@ package net.lzdq.winterbridge.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.lzdq.winterbridge.WinterBridge;
 import net.minecraft.client.KeyMapping;
-import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraft.resources.Identifier;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.lwjgl.glfw.GLFW;
 
 public final class ModKeyBindings {
 	public static final ModKeyBindings INSTANCE = new ModKeyBindings();
-	public static final String CATEGORY = "key.categories." + WinterBridge.MODID;
-	public static final String CATEGORY_INVENTORY = "key.categories." + WinterBridge.MODID + ".inventory";
+	// 1.21.x replaced the String category with a registered KeyMapping.Category record.
+	// The display label is Component.translatable(id.toLanguageKey("key.category")),
+	// i.e. "key.category.winterbridge.main" / "key.category.winterbridge.inventory".
+	public static final KeyMapping.Category CATEGORY =
+			new KeyMapping.Category(Identifier.fromNamespaceAndPath(WinterBridge.MODID, "main"));
+	public static final KeyMapping.Category CATEGORY_INVENTORY =
+			new KeyMapping.Category(Identifier.fromNamespaceAndPath(WinterBridge.MODID, "inventory"));
 	public Map<String, KeyMapping> keys = new LinkedHashMap<>();
 
-	private void add(String name, String category, int keyCode, KeyConflictContext context) {
+	private void add(String name, KeyMapping.Category category, int keyCode, KeyConflictContext context) {
 		KeyMapping key = new KeyMapping("key." + WinterBridge.MODID + "." + name,
 				context, // The context goes here
 				InputConstants.Type.KEYSYM,
@@ -23,7 +29,7 @@ public final class ModKeyBindings {
 		keys.put(name, key);
 	}
 
-	private void add(String name, String category, KeyConflictContext context) {
+	private void add(String name, KeyMapping.Category category, KeyConflictContext context) {
 		add(name, category, InputConstants.UNKNOWN.getValue(), context);
 	}
 

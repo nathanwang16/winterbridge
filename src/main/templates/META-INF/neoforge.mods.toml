@@ -1,0 +1,28 @@
+# neoforge.mods.toml — placeholders are expanded by the generateModMetadata Gradle task.
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="LZDQ"
+description='''
+LZDQ's bedwars assistant. Client-only.
+See https://github.com/LZDQ/winterbridge/ for details.
+'''
+# Client-only mod: it registers no network channels, so NeoForge treats it as
+# optional on the server and it can connect to vanilla servers (e.g. Hypixel).
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="[${neo_version},)"
+    ordering="NONE"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="CLIENT"

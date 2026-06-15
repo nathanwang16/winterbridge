@@ -47,7 +47,7 @@ public class NinjaBridgeHandler extends OrthogonalBridgeHandler{
         boolean flag = true;
         if (Math.abs(dist) > 0.1)
             flag = false;
-        if (!mc.player.getBlockStateOn().isAir())
+        if (!onAir())
             flag = false;
         if (!RotateHandler.finished())
             flag = false;
@@ -66,12 +66,12 @@ public class NinjaBridgeHandler extends OrthogonalBridgeHandler{
     }
     @Override
     void sneakTick(){
-        if (!mc.player.getOnPos().equals(base_pos)){
+        if (!onPos().equals(base_pos)){
             if (mc.hitResult.getType() == HitResult.Type.BLOCK){
                 BlockHitResult hit = (BlockHitResult) mc.hitResult;
                 if (hit.getDirection().equals(dir_go) && --left_tick < 0){
                     ActionHandler.placeBlock(hit);
-                } else if (!mc.player.getBlockStateOn().isAir()){
+                } else if (!onAir()){
                     base_pos = base_pos.relative(dir_go);
                     //mc.options.keyShift.setDown(false);  This should be done in walk(up)
                     updateNextWalk();

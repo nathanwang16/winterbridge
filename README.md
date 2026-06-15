@@ -1,10 +1,17 @@
 # winterbridge
 
-This is a bedwars assistant developed by LZDQ. Currently it requires Minecraft 1.19.X and forge.
+This is a bedwars assistant developed by LZDQ. It requires **Minecraft 1.21.11** and **NeoForge 21.11.42** (Java 21). This version is a client-side NeoForge mod and connects to servers that support 1.21.x (e.g. Hypixel).
+
+> Ported from the original 1.19.4 / Forge build. See `CHANGELOG.md` (v2.6) for the migration notes.
 
 ## Requirement
 
-[configured-2.1.1-1.19.4.jar](https://www.curseforge.com/minecraft/mc-mods/configured/files/4462894)
+* [NeoForge 21.11.42 for Minecraft 1.21.11](https://maven.neoforged.net/releases/net/neoforged/neoforge/21.11.42/neoforge-21.11.42-installer.jar) — install with `java -jar neoforge-21.11.42-installer.jar --install-client`
+* No other mods are required. Config lives in `config/winterbridge-client.toml` (edit by hand; the old "configured" GUI dependency was dropped).
+
+## Building
+
+`./build.sh` builds with JDK 21 and copies the jar into your Minecraft `mods/` folder. The toolchain is ModDevGradle (NeoForge); first build downloads + decompiles Minecraft.
 
 ## Functions
 

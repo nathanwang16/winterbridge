@@ -66,7 +66,7 @@ public class NinjaDiagonalHandler extends DiagonalBridgeHandler{
 	}
 	@Override
 	void sneakTick(){
-		if (!mc.player.getOnPos().equals(base_pos)){
+		if (!onPos().equals(base_pos)){
 			//mc.player.displayClientMessage(Component.literal("on edge"), false);
 			if (mc.hitResult.getType() == HitResult.Type.BLOCK){
 				BlockHitResult hit = (BlockHitResult) mc.hitResult;
@@ -81,7 +81,7 @@ public class NinjaDiagonalHandler extends DiagonalBridgeHandler{
 						last_hit_dir = hit.getDirection();
 					}
 					//KeyMapping.click(mc.options.keyUse.getKey());
-				} else if (!mc.player.getBlockStateOn().isAir()){
+				} else if (!onAir()){
 					//mc.player.displayClientMessage(Component.literal("3"), false);
 					//mc.player.displayClientMessage(Component.literal(base_pos.toShortString()), false);
 					//mc.player.displayClientMessage(Component.literal(mc.player.getOnPos().toShortString()), false);

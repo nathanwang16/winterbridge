@@ -19,7 +19,10 @@ public class ActionHandler {
         InteractionHand hand = InteractionHand.MAIN_HAND;
         InteractionResult result = mc.gameMode.useItemOn(mc.player, hand, hit);
         if (result.consumesAction()){
-            if (result.shouldSwing()){
+            // 1.21 reworked InteractionResult into a sealed type; the old shouldSwing()
+            // is gone. Swing only when the result is a client-side Success.
+            if (result instanceof InteractionResult.Success success
+                    && success.swingSource() == InteractionResult.SwingSource.CLIENT){
                 mc.player.swing(hand);
                 //mc.gameRenderer.itemInHandRenderer.itemUsed(hand);
             }
@@ -39,7 +42,7 @@ public class ActionHandler {
     public static BlockHitResult getHitResult(Vec3 dir_vec){
         Minecraft mc = Minecraft.getInstance();
         dir_vec = dir_vec.normalize();
-        double dist = mc.player.getBlockReach();
+        double dist = mc.player.blockInteractionRange();
         Vec3 start_vec = mc.player.getEyePosition();
         Vec3 end_vec = start_vec.add(dir_vec.scale(dist));
         return mc.level.clip(new ClipContext(start_vec, end_vec, ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, mc.player));

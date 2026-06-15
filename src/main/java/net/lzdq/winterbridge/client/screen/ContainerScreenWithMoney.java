@@ -6,6 +6,7 @@ import net.lzdq.winterbridge.WinterBridge;
 import net.lzdq.winterbridge.client.ModKeyBindings;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ChestMenu;
@@ -16,15 +17,12 @@ public class ContainerScreenWithMoney extends ContainerScreen {
     }
 	
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent keyEvent) {
         // Implement your custom key handling logic here
-        if(super.keyPressed(keyCode, scanCode, modifiers))
+        if(super.keyPressed(keyEvent))
 			return true;
-		// WinterBridge.LOGGER.debug("fuck");
-
-		// KeyMapping.click(InputConstants.getKey(keyCode, scanCode));
 		for (KeyMapping keymap : ModKeyBindings.INSTANCE.keys.values()){
-			InputConstants.Key key = InputConstants.getKey(keyCode, scanCode);
+			InputConstants.Key key = InputConstants.getKey(keyEvent);
 			if (keymap.getCategory().equals(ModKeyBindings.CATEGORY_INVENTORY) &&
 					keymap.getKey().equals(key)){
 				KeyMapping.click(key);
